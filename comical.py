@@ -11,21 +11,32 @@ import os
 import argparse
 import subprocess
 import shutil
+import arrow
 from fpdf import FPDF
 
 # Parse command line
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input", required=True, help="Source video file")
 ap.add_argument("-o", "--output", required=True, help="PDF to output")
-ap.add_argument("-f", "--full", required=False, help="Full conversion", action="store_true")
-ap.add_argument("-p", "--prebuild", required=False, help="All steps except build", action="store_true")
-ap.add_argument("-e", "--extract", required=False, help="Extract subtitle PNGs from video file", action="store_true")
-ap.add_argument("-c", "--clean", required=False, help="Clean up extracted subtitles", action="store_true")
-ap.add_argument("-r", "--ocr", required=False, help="OCR cleaned subtitles", action="store_true")
-ap.add_argument("-m", "--images", required=False, help="Extract images based on subtitles", action="store_true")
-ap.add_argument("-d", "--detectscenes", required=False, help="Detect scene changes", action="store_true")
-ap.add_argument("-s", "--extractscenes", required=False, help="Extract scene change images", action="store_true")
-ap.add_argument("-b", "--build", required=False, help="Build the PDF", action="store_true")
+ap.add_argument("-f", "--full", required=False, help="Full conversion",
+                action="store_true")
+ap.add_argument("-p", "--prebuild", required=False,
+                help="All steps except build", action="store_true")
+ap.add_argument("-e", "--extract", required=False,
+                help="Extract subtitle PNGs from video file",
+                action="store_true")
+ap.add_argument("-c", "--clean", required=False,
+                help="Clean up extracted subtitles", action="store_true")
+ap.add_argument("-r", "--ocr", required=False, help="OCR cleaned subtitles",
+                action="store_true")
+ap.add_argument("-m", "--images", required=False,
+                help="Extract images based on subtitles", action="store_true")
+ap.add_argument("-d", "--detectscenes", required=False,
+                help="Detect scene changes", action="store_true")
+ap.add_argument("-s", "--extractscenes", required=False,
+                help="Extract scene change images", action="store_true")
+ap.add_argument("-b", "--build", required=False, help="Build the PDF",
+                action="store_true")
 args = vars(ap.parse_args())
 
 # Paths
@@ -40,7 +51,8 @@ fullRun = args['full']
 preBuild = args['prebuild']
 
 # Set font
-TTF_FONT = os.path.dirname(os.path.realpath(__file__)) + "/BackIssuesBB_reg.ttf"
+path = os.path.dirname(os.path.realpath(__file__))
+TTF_FONT = path + "/BackIssuesBB_reg.ttf"
 TTF_FONT_SIZE = 12
 
 print('Comical')
@@ -55,16 +67,18 @@ if not os.path.isfile(videoFile):
     print('Video file not found: ' + videoFile)
     sys.exit()
 
-    
 # Step 1 - Extract the subtitles
 if args['extract'] or fullRun or preBuild:
     print('[1/7] Extracting subtitle images')
-    subprocess.call('ccextractor {} -out=spupng -quiet'.format(videoFile), shell=True)
+    subprocess.call('ccextractor {} -out=spupng -quiet'.format(videoFile),
+                    shell=True)
 
 # Step 2 - Prepare the titles for OCR
 if args['clean'] or fullRun or preBuild:
     print('[2/7] Cleaning subtitle images')
-    subprocess.call('mogrify -resize 400%  -monochrome -channel RGB -negate  -blur 5 -threshold 70% {}/*.png'.format(subsDir), shell=True)
+    mogrifyCmd = 'mogrify -resize 400% -monochrome -channel RGB'
+    mogrifyCmd += ' -negate -blur 5 -threshold 70% {}/*.png'
+    subprocess.call(mogrifyCmd.format(subsDir), shell=True)
 
 # Step 3 - OCR the subtitles
 if args['ocr'] or fullRun or preBuild:
@@ -77,8 +91,10 @@ if args['ocr'] or fullRun or preBuild:
         if fileExtension == '.png':
             subtitlePNGsCount += 1
             print('OCRing {} of {}'.format(subtitlePNGsCount, subtitlePNGsLen))
-            subtitleFile = subsDir + '/' + file    
-            subprocess.call('tesseract {} {} > /dev/null'.format(subtitleFile, subtitleFile), shell=True)
+            subtitleFile = subsDir + '/' + file
+            subprocess.call('tesseract {} {} > /dev/null'.format(subtitleFile,
+                                                                 subtitleFile),
+                            shell=True)
 
 # Step 4 - Extract the image for each subtitle
 if args['images'] or fullRun or preBuild:
@@ -98,34 +114,40 @@ if args['images'] or fullRun or preBuild:
     spuNodeLen = len(root[0])
     spuNodeLenCount = 0
     for spu in root[0]:
-        
-        subtitleStartTime = round(float(spu.attrib['start']),2)
+
+        if(spu.attrib['start'].find(":")):
+            subtitleStartTime = arrow.get("1970-01-01 " + spu.attrib['start'],
+                                          "YYYY-MM-DD HH:mm:ss:SS").timestamp
+        else:
+            subtitleStartTime = str(round(float(line), 2))
 
         spuNodeLenCount += 1
-        print('Extracting subtitle at {} {}/{}'.format(str(subtitleStartTime), spuNodeLenCount, spuNodeLen))
-        
+        print('Extracting image at {} {}/{}'.format(str(subtitleStartTime),
+              spuNodeLenCount, spuNodeLen))
+
         # Extract image for subtitle from video
-        outputImg = outDir + '/' + str(subtitleStartTime) + '.jpg'
+        outputImg = outDir + '/' + str(subtitleStartTime) + '.0.jpg'
         cmd = extractImageCmdTemplate.format(subtitleStartTime, outputImg)
         result = subprocess.call(cmd, shell=True)
 
         # Copy subtitle file
         txtFileSrc = baseDir + '/' + spu.attrib['image'] + '.txt'
-        txtFileDest = outDir + '/' + str(subtitleStartTime) + '.txt'
+        txtFileDest = outDir + '/' + str(subtitleStartTime) + '.0.txt'
         shutil.copyfile(txtFileSrc, txtFileDest)
 
 # Step 5 - Ask ffmpeg to detect scene changes
 if args['detectscenes'] or fullRun or preBuild:
     sceneRawFile = outDir + '/sceneraw.txt'
     sceneDetectionCmdTemplate = 'ffmpeg -i {} -filter:v "select=\'gt(scene,0.4)\',showinfo" -f null - 2> {}'
-    sceneDetectionCmd = sceneDetectionCmdTemplate.format(videoFile, sceneRawFile)
+    sceneDetectionCmd = sceneDetectionCmdTemplate.format(videoFile,
+                                                         sceneRawFile)
 
     print('[5/7] Detecting scene changes')
     result = subprocess.call(sceneDetectionCmd, shell=True)
 
     # Use grep to extact the time data
     sceneTimeFile = outDir + '/scenetime.txt'
-    sceneTimeCmdTemplate = "grep showinfo {} | grep pts_time:[0-9.]* -o | grep -E '[0-9]+(?:\.[0-9]*)?' -o > {}"  #pylint: disable=all
+    sceneTimeCmdTemplate = "grep showinfo {} | grep pts_time:[0-9.]* -o | grep -E '[0-9]+(?:\.[0-9]*)?' -o > {}"  # pylint: disable=all
     sceneTimeCmd = sceneTimeCmdTemplate.format(sceneRawFile, sceneTimeFile)
 
     print('Extracting timestamps')
@@ -133,13 +155,14 @@ if args['detectscenes'] or fullRun or preBuild:
 
 # Step 6 - Extract scene changes
 if args['extractscenes'] or fullRun or preBuild:
+    sceneTimeFile = outDir + '/scenetime.txt'
     print('[6/7] Extracting scene change images')
     extractCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -vf scale=iw*1.33:ih -q:v 2 {}'
 
     with open(sceneTimeFile) as fp:
         for cnt, line in enumerate(fp):
-            
-            ts = str(round(float(line),2))
+
+            ts = str(round(float(line), 2))
 
             # Extract image for subtitle from video
             outputImg = outDir + '/' + str(ts) + '.jpg'
@@ -167,13 +190,13 @@ if args['build'] or fullRun:
     # Remove any unsubtitled images that are within a second of another
     for i, ts in enumerate(imgList):
         if (ts - lastTs) < 1:
-            if os.path.isfile(outDir + '/' + str(ts) + '.txt') == False:
+            if os.path.isfile(outDir + '/' + str(ts) + '.txt') is False:
                 print('Discarding ' + str(ts))
                 del imgList[i]
-            elif os.path.isfile(outDir + '/' + str(lastTs) + '.txt') == False:
+            elif os.path.isfile(outDir + '/' + str(lastTs) + '.txt') is False:
                 print('Discarding ' + str(lastTs))
-                del imgList[i-1]
-                
+                del imgList[i - 1]
+
         lastTs = ts
 
     # Set up PDF file
@@ -185,16 +208,16 @@ if args['build'] or fullRun:
 
     for i, img in enumerate(imgList):
 
-        print('Image {} of {}'.format(i+1, imgListLen))
+        print('Image {} of {}'.format(i + 1, imgListLen))
 
-        # Calculate position on page        
+        # Calculate position on page
         if i == 0 or i % 6 == 0:
             pdf.add_page()
             x = 0
             y = 0
         else:
             x = (i % 2) * 100
-            y = (((i % 6) & 6) / 2) * 90 # There has to be a better way than this but my brain won't tell me what it is
+            y = (((i % 6) & 6) / 2) * 90
 
         # Top-left padding
         x += 5
@@ -211,10 +234,10 @@ if args['build'] or fullRun:
 
             subtitleTxt = subtitleTxt.strip()
             pdf.set_xy(x, y + 62)
-            pdf.multi_cell(w=99, h=8, txt = subtitleTxt, border = 0,
-            align = 'C', fill = False)
+            pdf.multi_cell(w=99, h=8, txt=subtitleTxt, border=0,
+                           align='C', fill=False)
 
     print('Saving PDF')
-    pdf.output(pdfFile, 'F')    
+    pdf.output(pdfFile, 'F')
 
 print('Complete')
