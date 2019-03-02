@@ -61,6 +61,19 @@ Based on the output of the previous step, extract still frames for scene changes
 -b, --build
 Take all the images and text files and compile into a single PDF.
 
+## Affecting Captions
+
+These additional options arguments can affect how text is rendered:
+
+--fontsize=_n_
+The font size (default: 8)
+
+--lineheight=_n_
+The line height for each row (default: 5)
+
+--offset=_n_
+Starting position of the caption below the images (default: 68)
+
 ## Notes On Operation
 
 To use, get a .ts file, such as one recorded from the Raspberry Pi DVB HAT. We'll call

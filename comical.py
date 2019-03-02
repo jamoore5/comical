@@ -37,9 +37,13 @@ ap.add_argument("-s", "--extractscenes", required=False,
                 help="Extract scene change images", action="store_true")
 ap.add_argument("-b", "--build", required=False, help="Build the PDF",
                 action="store_true")
+ap.add_argument("--fontsize", required=False, help="Font size", default=8)
+ap.add_argument("--lineheight", required=False, help="Line height", default=5)
+ap.add_argument("--offset", required=False, help="Line height", default=68)
 args = vars(ap.parse_args())
 
 # Paths
+path = os.path.dirname(os.path.realpath(__file__))
 videoFile = os.path.abspath(args['input'])
 pdfFile = os.path.abspath(args['output'])
 baseDir = os.path.dirname(videoFile)
@@ -51,9 +55,10 @@ fullRun = args['full']
 preBuild = args['prebuild']
 
 # Set font
-path = os.path.dirname(os.path.realpath(__file__))
-TTF_FONT = path + "/BackIssuesBB_reg.ttf"
-TTF_FONT_SIZE = 12
+fontFile = path + "/BackIssuesBB_reg.ttf"
+fontSize = args['fontsize']
+fontLineHeight = args['lineheight']
+fontOffset = args['offset']
 
 print('Comical')
 
@@ -99,7 +104,7 @@ if args['ocr'] or fullRun or preBuild:
 # Step 4 - Extract the image for each subtitle
 if args['images'] or fullRun or preBuild:
     print('[4/7] Extracting images based on subtitle timestamps')
-    extractImageCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -vf scale=iw*1.33:ih -q:v 2 {}'
+    extractImageCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -q:v 2 {}'
 
     try:
         os.mkdir(outDir)
@@ -165,7 +170,7 @@ if args['detectscenes'] or fullRun or preBuild:
 if args['extractscenes'] or fullRun or preBuild:
     sceneTimeFile = outDir + '/scenetime.txt'
     print('[6/7] Extracting scene change images')
-    extractCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -vf scale=iw*1.33:ih -q:v 2 {}'
+    extractCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -q:v 2 {}'
 
     with open(sceneTimeFile) as fp:
         for cnt, line in enumerate(fp):
@@ -209,10 +214,11 @@ if args['build'] or fullRun:
 
     # Set up PDF file
     pdf = FPDF()
-    pdf.add_font('comic', '', TTF_FONT, True)
-    pdf.set_font('comic', '', TTF_FONT_SIZE)
+    pdf.add_font('comic', '', fontFile, True)
+    pdf.set_font('comic', '', fontSize)
 
     imgListLen = len(imgList)
+    pageCount = 0
 
     for i, img in enumerate(imgList):
 
@@ -221,6 +227,7 @@ if args['build'] or fullRun:
         # Calculate position on page
         if i == 0 or i % 6 == 0:
             pdf.add_page()
+            pageCount += 1
             x = 0
             y = 0
         else:
@@ -241,12 +248,15 @@ if args['build'] or fullRun:
                 subtitleTxt = subtitle_fh.read().strip()
 
             subtitleTxt = subtitleTxt.strip()
-            pdf.set_xy(x, y + 62)
-            pdf.multi_cell(w=99, h=8, txt=subtitleTxt, border=0,
+            subtitleTxt = subtitleTxt.replace('\n\n', '\n')
+
+            pdf.set_xy(x, y + fontOffset)
+            pdf.multi_cell(w=99, h=fontLineHeight, txt=subtitleTxt, border=0,
                            align='C', fill=False)
 
     # Final build (this can take a little while depending on how many pages)
     print('Saving PDF')
     pdf.output(pdfFile, 'F')
+    print('{} page(s) generated'.format(pageCount))
 
 print('Complete')
