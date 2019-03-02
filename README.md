@@ -41,7 +41,7 @@ Complete all steps in a single run.
 Complete all steps except for the final PDF build.
 
 -e, --extract
-Extract the subtitle stream and convert to XML/PNG.
+Extract the subtitle stream and convert to XML/PNG (spumux format).
 
 -c, --clean
 Take the raw PNG images and resize then convert to grayscale to improve OCR.

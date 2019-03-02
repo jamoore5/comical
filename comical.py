@@ -114,29 +114,37 @@ if args['images'] or fullRun or preBuild:
     spuNodeLen = len(root[0])
     spuNodeLenCount = 0
     for spu in root[0]:
-
-        if(spu.attrib['start'].find(":")):
+        if(spu.attrib['start'].find(":") != -1):
             subtitleStartTime = arrow.get("1970-01-01 " + spu.attrib['start'],
                                           "YYYY-MM-DD HH:mm:ss:SS").timestamp
         else:
-            subtitleStartTime = str(round(float(line), 2))
+            subtitleStartTime = str(round(float(spu.attrib['start']), 2))
 
         spuNodeLenCount += 1
         print('Extracting image at {} {}/{}'.format(str(subtitleStartTime),
               spuNodeLenCount, spuNodeLen))
 
         # Extract image for subtitle from video
-        outputImg = outDir + '/' + str(subtitleStartTime) + '.0.jpg'
+        # Time formats vary, so we have some processing to do
+        subtitleStartTimeString = str(subtitleStartTime)
+        if subtitleStartTimeString.find('.') == -1:
+            subtitleStartTimeString += '.0'
+        subtitleStartTimeString += '.jpg'
+        outputImg = outDir + '/' + subtitleStartTimeString
+
+        # Ask ffmpeg to extract the image
         cmd = extractImageCmdTemplate.format(subtitleStartTime, outputImg)
         result = subprocess.call(cmd, shell=True)
 
         # Copy subtitle file
         txtFileSrc = baseDir + '/' + spu.attrib['image'] + '.txt'
-        txtFileDest = outDir + '/' + str(subtitleStartTime) + '.0.txt'
+        txtFileDest = outDir + '/' + subtitleStartTimeString[:-3] + "txt"
         shutil.copyfile(txtFileSrc, txtFileDest)
 
 # Step 5 - Ask ffmpeg to detect scene changes
 if args['detectscenes'] or fullRun or preBuild:
+
+    # Ask ffmpeg to detect scene changes
     sceneRawFile = outDir + '/sceneraw.txt'
     sceneDetectionCmdTemplate = 'ffmpeg -i {} -filter:v "select=\'gt(scene,0.4)\',showinfo" -f null - 2> {}'
     sceneDetectionCmd = sceneDetectionCmdTemplate.format(videoFile,
@@ -237,6 +245,7 @@ if args['build'] or fullRun:
             pdf.multi_cell(w=99, h=8, txt=subtitleTxt, border=0,
                            align='C', fill=False)
 
+    # Final build (this can take a little while depending on how many pages)
     print('Saving PDF')
     pdf.output(pdfFile, 'F')
 
