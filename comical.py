@@ -17,7 +17,7 @@ from fpdf import FPDF
 # Parse command line
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input", required=True, help="Source video file")
-ap.add_argument("-o", "--output", required=True, help="PDF to output")
+ap.add_argument("-o", "--output", required=False, help="PDF to output", default="output.pdf")
 ap.add_argument("-f", "--full", required=False, help="Full conversion",
                 action="store_true")
 ap.add_argument("-p", "--prebuild", required=False,
