@@ -104,7 +104,7 @@ if args['ocr'] or fullRun or preBuild:
 # Step 4 - Extract the image for each subtitle
 if args['images'] or fullRun or preBuild:
     print('[4/7] Extracting images based on subtitle timestamps')
-    extractImageCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -q:v 2 {}'
+    extractImageCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -vf scale=iw*1.33:ih -q:v 2 {}'
 
     try:
         os.mkdir(outDir)
@@ -170,7 +170,7 @@ if args['detectscenes'] or fullRun or preBuild:
 if args['extractscenes'] or fullRun or preBuild:
     sceneTimeFile = outDir + '/scenetime.txt'
     print('[6/7] Extracting scene change images')
-    extractCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -q:v 2 {}'
+    extractCmdTemplate = 'ffmpeg -loglevel panic -y -ss {} -i ' + videoFile + ' -vframes 1 -vf scale=iw*1.33:ih -q:v 2 {}'
 
     with open(sceneTimeFile) as fp:
         for cnt, line in enumerate(fp):
