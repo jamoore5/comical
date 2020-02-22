@@ -38,8 +38,8 @@ ap.add_argument("-s", "--extractscenes", required=False,
 ap.add_argument("-b", "--build", required=False, help="Build the PDF",
                 action="store_true")
 ap.add_argument("--fontsize", required=False, help="Font size", default=8)
-ap.add_argument("--lineheight", required=False, help="Line height", default=5)
-ap.add_argument("--offset", required=False, help="Line height", default=68)
+ap.add_argument("--lineheight", required=False, help="Line height", default=3)
+ap.add_argument("--offset", required=False, help="Line height", default=52)
 args = vars(ap.parse_args())
 
 # Paths
@@ -214,14 +214,14 @@ if args['build'] or fullRun:
         print('Image {} of {}'.format(i + 1, imgListLen))
 
         # Calculate position on page
-        if i == 0 or i % 6 == 0:
+        if i == 0 or i % 8 == 0:
             pdf.add_page()
             pageCount += 1
             x = 0
             y = 0
         else:
             x = (i % 2) * 100
-            y = (((i % 6) & 6) / 2) * 90
+            y = (((i % 8) & 6) / 2) * 68
 
         # Top-left padding
         x += 5
