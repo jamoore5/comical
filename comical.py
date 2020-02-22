@@ -11,7 +11,7 @@ import os
 import argparse
 import subprocess
 import shutil
-import arrow
+# import arrow
 from fpdf import FPDF
 
 # Parse command line
@@ -57,8 +57,8 @@ preBuild = args['prebuild']
 # Set font
 fontFile = path + "/BackIssuesBB_reg.ttf"
 fontSize = args['fontsize']
-fontLineHeight = args['lineheight']
-fontOffset = args['offset']
+fontLineHeight = int(args['lineheight'])
+fontOffset = int(args['offset'])
 
 print('Comical')
 
@@ -75,31 +75,20 @@ if not os.path.isfile(videoFile):
 # Step 1 - Extract the subtitles
 if args['extract'] or fullRun or preBuild:
     print('[1/7] Extracting subtitle images')
-    subprocess.call('ccextractor {} -out=spupng -quiet'.format(videoFile),
-                    shell=True)
+    # subprocess.call('ccextractor {} -out=spupng -quiet'.format(videoFile),
+    #                 shell=True)
 
-# Step 2 - Prepare the titles for OCR
-if args['clean'] or fullRun or preBuild:
-    print('[2/7] Cleaning subtitle images')
-    mogrifyCmd = 'mogrify -resize 400% -monochrome -channel RGB'
-    mogrifyCmd += ' -negate -blur 5 -threshold 70% {}/*.png'
-    subprocess.call(mogrifyCmd.format(subsDir), shell=True)
+    subprocess.call("sed '/<!--/d' {} > temp.xml".format(xmlFile), shell=True)
+    subprocess.call("sed '/-->/d' {} > {}".format("temp.xml", xmlFile), shell=True)
 
-# Step 3 - OCR the subtitles
-if args['ocr'] or fullRun or preBuild:
-    print('[3/7] OCRing the subtitles')
-    subtitlePNGs = os.listdir(subsDir)
-    subtitlePNGsLen = len(subtitlePNGs)
-    subtitlePNGsCount = 0
-    for file in subtitlePNGs:
-        filename, fileExtension = os.path.splitext(file)
-        if fileExtension == '.png':
-            subtitlePNGsCount += 1
-            print('OCRing {} of {}'.format(subtitlePNGsCount, subtitlePNGsLen))
-            subtitleFile = subsDir + '/' + file
-            subprocess.call('tesseract {} {} > /dev/null'.format(subtitleFile,
-                                                                 subtitleFile),
-                            shell=True)
+    # Read in the XML file
+    xml = ET.parse(xmlFile)
+    root = xml.getroot()
+
+    for spu in root.iter('spu'):
+        f = open('{baseDir}/{imageName}.txt'.format(baseDir=baseDir, imageName=spu.attrib['image']), "w+")
+        f.write(spu.text.encode("utf-8"))
+        f.close
 
 # Step 4 - Extract the image for each subtitle
 if args['images'] or fullRun or preBuild:
